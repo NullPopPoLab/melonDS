@@ -8,7 +8,8 @@ InputState input_state;
 u32 input_mask = 0xFFF;
 static bool has_touched = false;
 
-extern float analog_stick_speed;
+extern float left_stick_speed;
+extern float right_stick_speed;
 
 #define ADD_KEY_TO_MASK(key, i) if (!!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, key)) input_mask &= ~(1 << i); else input_mask |= (1 << i);
 
@@ -92,18 +93,28 @@ void update_input(InputState *state)
 
             break;
          case TouchMode::Joystick:
-            int16_t joystick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
-            int16_t joystick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-            double speed=analog_stick_speed/2048.0;
-            static double frac_x=0.0,frac_y=0.0;
-            frac_x+=speed*joystick_x;
-            frac_y+=speed*joystick_y;
-            joystick_x=frac_x;
-            joystick_y=frac_y;
-            frac_x-=joystick_x;
-            frac_y-=joystick_y;
-            state->touch_x = Clamp(state->touch_x + joystick_x, 0, VIDEO_WIDTH - 1);
-            state->touch_y = Clamp(state->touch_y + joystick_y, 0, VIDEO_HEIGHT - 1);
+            int16_t joystick_lx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+            int16_t joystick_ly = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+            int16_t joystick_rx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+            int16_t joystick_ry = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+            double speed_l=left_stick_speed/2048.0;
+            double speed_r=right_stick_speed/2048.0;
+            static double frac_lx=0.0,frac_ly=0.0;
+            static double frac_rx=0.0,frac_ry=0.0;
+            frac_lx+=speed_l*joystick_lx;
+            frac_ly+=speed_l*joystick_ly;
+            frac_rx+=speed_r*joystick_rx;
+            frac_ry+=speed_r*joystick_ry;
+            joystick_lx=frac_lx;
+            joystick_ly=frac_ly;
+            joystick_rx=frac_rx;
+            joystick_ry=frac_ry;
+            frac_lx-=joystick_lx;
+            frac_ly-=joystick_ly;
+            frac_rx-=joystick_rx;
+            frac_ry-=joystick_ry;
+            state->touch_x = Clamp(state->touch_x + joystick_lx + joystick_rx, 0, VIDEO_WIDTH - 1);
+            state->touch_y = Clamp(state->touch_y + joystick_ly + joystick_ry, 0, VIDEO_HEIGHT - 1);
 
             state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
 
