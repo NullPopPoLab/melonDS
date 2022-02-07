@@ -46,6 +46,7 @@ bool swapped_screens = false;
 bool toggle_swap_screen = false;
 bool swap_screen_toggled = false;
 
+float analog_stick_speed=1.0f;
 
 enum CurrentRenderer
 {
@@ -167,6 +168,7 @@ void retro_set_environment(retro_environment_t cb)
   static const retro_variable values[] =
    {
       { "melonds_console_mode", "Console Mode; DS|DSi" },
+      { "melonds_analog_stick_speed", "Analog Stick Speed; 0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|0.1|0.2|0.3|0.4" },
       { "melonds_boot_directly", "Boot game directly; enabled|disabled" },
       { "melonds_screen_layout", "Screen Layout; Top/Bottom|Bottom/Top|Left/Right|Right/Left|Top Only|Bottom Only|Hybrid Top|Hybrid Bottom" },
       { "melonds_screen_gap", screen_gap.c_str() },
@@ -272,6 +274,15 @@ static void check_variables(bool init)
       else
          Config::ConsoleType = 0;
    }
+
+   var.key = "melonds_analog_stick_speed";
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        analog_stick_speed = (float) atof(var.value);
+    }
+    else
+        analog_stick_speed = 0.5f;
 
    var.key = "melonds_boot_directly";
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)

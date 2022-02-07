@@ -8,6 +8,8 @@ InputState input_state;
 u32 input_mask = 0xFFF;
 static bool has_touched = false;
 
+extern float analog_stick_speed;
+
 #define ADD_KEY_TO_MASK(key, i) if (!!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, key)) input_mask &= ~(1 << i); else input_mask |= (1 << i);
 
 bool cursor_enabled(InputState *state)
@@ -90,9 +92,16 @@ void update_input(InputState *state)
 
             break;
          case TouchMode::Joystick:
-            int16_t joystick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X) / 2048;
-            int16_t joystick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / 2048;
-
+            int16_t joystick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+            int16_t joystick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+            double speed=analog_stick_speed/2048.0;
+            static double frac_x=0.0,flac_y=0.0;
+            frac_x+=speed*joystick_x;
+            frac_y+=speed*joystick_y;
+            joystick_x=frac_x+0.5;
+            joystick_y=frac_y+0.5;
+            frac_x-=joystick_x;
+            frac_y-=joystick_y;
             state->touch_x = Clamp(state->touch_x + joystick_x, 0, VIDEO_WIDTH - 1);
             state->touch_y = Clamp(state->touch_y + joystick_y, 0, VIDEO_HEIGHT - 1);
 
