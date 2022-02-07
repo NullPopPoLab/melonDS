@@ -98,8 +98,8 @@ void update_input(InputState *state)
             static double frac_x=0.0,frac_y=0.0;
             frac_x+=speed*joystick_x;
             frac_y+=speed*joystick_y;
-            joystick_x=frac_x+0.5;
-            joystick_y=frac_y+0.5;
+            joystick_x=frac_x;
+            joystick_y=frac_y;
             frac_x-=joystick_x;
             frac_y-=joystick_y;
             state->touch_x = Clamp(state->touch_x + joystick_x, 0, VIDEO_WIDTH - 1);
