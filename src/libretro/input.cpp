@@ -96,30 +96,17 @@ void update_input(InputState *state)
 
             break;
          case TouchMode::Joystick:
+            static float cursor_x=0.0f,cursor_y=0.0f;
             int16_t joystick_lx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
             int16_t joystick_ly = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
             int16_t joystick_rx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
             int16_t joystick_ry = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
             double speed_l=left_stick_speed*inv_analog_stick_acceleration;
             double speed_r=right_stick_speed*inv_analog_stick_acceleration;
-            static double frac_lx=0.0,frac_ly=0.0;
-            static double frac_rx=0.0,frac_ry=0.0;
-            frac_lx+=speed_l*joystick_lx;
-            frac_ly+=speed_l*joystick_ly;
-            frac_rx+=speed_r*joystick_rx;
-            frac_ry+=speed_r*joystick_ry;
-            joystick_lx=frac_lx;
-            joystick_ly=frac_ly;
-            joystick_rx=frac_rx;
-            joystick_ry=frac_ry;
-            frac_lx-=joystick_lx;
-            frac_ly-=joystick_ly;
-            frac_rx-=joystick_rx;
-            frac_ry-=joystick_ry;
 
             double max = (float)0x8000*inv_analog_stick_acceleration;
-            double ax=joystick_lx+joystick_rx;
-            double ay=joystick_ly+joystick_ry;
+            double ax=joystick_lx*speed_l+joystick_rx*speed_r;
+            double ay=joystick_ly*speed_l+joystick_ry*speed_r;
             double radius2=ax*ax+ay*ay;
             double max1=analog_stick_deadzone*max;
             double max2=max1*max1;
@@ -138,8 +125,15 @@ void update_input(InputState *state)
 				ax=ay=0;
 			}
 
-            state->touch_x = Clamp(state->touch_x + ax, 0, VIDEO_WIDTH - 1);
-            state->touch_y = Clamp(state->touch_y + ay, 0, VIDEO_HEIGHT - 1);
+            cursor_x+=ax;
+            cursor_y+=ay;
+            if (cursor_x < 0) cursor_x = min_width;
+            else if (cursor_x > VIDEO_WIDTH - 1) cursor_x = VIDEO_WIDTH - 1;
+            if (cursor_y < 0) cursor_y = min_height;
+            else if (cursor_y > VIDEO_HEIGHT - 1) cursor_y = VIDEO_HEIGHT - 1;
+
+            state->touch_x = cursor_x;
+            state->touch_y = cursor_y;
 
             state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
 
