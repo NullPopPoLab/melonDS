@@ -118,8 +118,8 @@ void update_input(InputState *state)
                 double dr=radius3/radius;
 
                 // Convert back to cartesian coordinates
-                ax = round(dr*ax);
-                ay = round(dr*ay);
+                ax *= dr;
+                ay *= dr;
             }
 			else{
 				ax=ay=0;
@@ -127,10 +127,12 @@ void update_input(InputState *state)
 
             cursor_x+=ax;
             cursor_y+=ay;
-            if (cursor_x < 0) cursor_x = min_width;
-            else if (cursor_x > VIDEO_WIDTH - 1) cursor_x = VIDEO_WIDTH - 1;
-            if (cursor_y < 0) cursor_y = min_height;
-            else if (cursor_y > VIDEO_HEIGHT - 1) cursor_y = VIDEO_HEIGHT - 1;
+            double width=VIDEO_WIDTH - 1;
+            double height=VIDEO_HEIGHT - 1;
+            if (cursor_x < 0) cursor_x = 0;
+            else if (cursor_x > width) cursor_x = width;
+            if (cursor_y < 0) cursor_y = 0;
+            else if (cursor_y > height) cursor_y = height;
 
             state->touch_x = cursor_x;
             state->touch_y = cursor_y;
