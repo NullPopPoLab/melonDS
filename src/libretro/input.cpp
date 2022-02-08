@@ -10,6 +10,8 @@ static bool has_touched = false;
 
 extern float left_stick_speed;
 extern float right_stick_speed;
+extern float analog_stick_deadzone;
+extern float inv_analog_stick_acceleration;
 
 #define ADD_KEY_TO_MASK(key, i) if (!!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, key)) input_mask &= ~(1 << i); else input_mask |= (1 << i);
 
@@ -97,8 +99,8 @@ void update_input(InputState *state)
             int16_t joystick_ly = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
             int16_t joystick_rx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
             int16_t joystick_ry = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
-            double speed_l=left_stick_speed/2048.0;
-            double speed_r=right_stick_speed/2048.0;
+            double speed_l=left_stick_speed*inv_analog_stick_acceleration;
+            double speed_r=right_stick_speed*inv_analog_stick_acceleration;
             static double frac_lx=0.0,frac_ly=0.0;
             static double frac_rx=0.0,frac_ry=0.0;
             frac_lx+=speed_l*joystick_lx;
@@ -113,8 +115,27 @@ void update_input(InputState *state)
             frac_ly-=joystick_ly;
             frac_rx-=joystick_rx;
             frac_ry-=joystick_ry;
-            state->touch_x = Clamp(state->touch_x + joystick_lx + joystick_rx, 0, VIDEO_WIDTH - 1);
-            state->touch_y = Clamp(state->touch_y + joystick_ly + joystick_ry, 0, VIDEO_HEIGHT - 1);
+
+            double max = (float)0x8000*inv_analog_stick_acceleration;
+            double ax=joystick_lx+joystick_rx;
+            double ay=joystick_ly+joystick_ry;
+            double radius2=ax*ax+ay*ay;
+            double max1=analog_stick_deadzone*max;
+            double max2=max1*max1;
+            if(radius2 > max2)
+            {
+                // Re-scale analog stick range to negate deadzone (makes slow movements possible)
+                double radius=sqrt(radius2);
+                double radius3 = radius - max1*(max/(max - max1));
+                double dr=radius3/radius;
+
+                // Convert back to cartesian coordinates
+                ax = round(dr*ax);
+                ay = round(dr*ay);
+            }
+
+            state->touch_x = Clamp(state->touch_x + ax, 0, VIDEO_WIDTH - 1);
+            state->touch_y = Clamp(state->touch_y + ay, 0, VIDEO_HEIGHT - 1);
 
             state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
 
