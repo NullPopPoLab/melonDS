@@ -47,7 +47,7 @@ bool toggle_swap_screen = false;
 bool swap_screen_toggled = false;
 
 float left_stick_speed=0.8f;
-float right_stick_speed=0.1f;
+float right_stick_speed=0.2f;
 float analog_stick_deadzone=0.1f;
 float inv_analog_stick_acceleration = 1.0f/2048.0f;
 
@@ -172,7 +172,7 @@ void retro_set_environment(retro_environment_t cb)
    {
       { "melonds_console_mode", "Console Mode; DS|DSi" },
       { "melonds_left_stick_speed", "Left Stick Speed; 0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07|0.1|0.2|0.3|0.4|0.5|0.6|0.7" },
-      { "melonds_right_stick_speed", "Right Stick Speed; 0.1|0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07" },
+      { "melonds_right_stick_speed", "Right Stick Speed; 0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07|0.1" },
       { "melonds_stick_deadzone", "Stick Deadzone Percent; 10|15|20|25|30|35|40|45|50|0|1|2|5" },
       { "melonds_boot_directly", "Boot game directly; enabled|disabled" },
       { "melonds_screen_layout", "Screen Layout; Top/Bottom|Bottom/Top|Left/Right|Right/Left|Top Only|Bottom Only|Hybrid Top|Hybrid Bottom" },
@@ -296,7 +296,7 @@ static void check_variables(bool init)
         right_stick_speed = atof(var.value);
     }
     else
-        right_stick_speed = 0.1f;
+        right_stick_speed = 0.2f;
 
     var.key = "melonds_stick_deadzone";
 
