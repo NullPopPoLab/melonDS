@@ -210,6 +210,7 @@ void retro_set_environment(retro_environment_t cb)
    else
       log_cb = fallback_log;
 
+#if 0
    static const struct retro_controller_description controllers[] = {
       { "Nintendo DS", RETRO_DEVICE_JOYPAD },
       { NULL, 0 },
@@ -221,6 +222,7 @@ void retro_set_environment(retro_environment_t cb)
    };
 
    cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
+#endif
 
    vfs_iface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
    vfs_iface_info.iface = NULL;
@@ -742,8 +744,10 @@ bool retro_load_game(const struct retro_game_info *info)
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2, "Swap screens" },
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3, "Close lid" },
       { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3, "Touch joystick" },
-      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X, "Touch joystick X" },
-      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y, "Touch joystick Y" },
+      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X, "Alternative Touch X (fast)" },
+      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y, "Alternative Touch Y (fast)" },
+      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X, "Alternative Touch X (slow)" },
+      { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y, "Alternative Touch Y (slow)" },
       { 0 },
    };
 
