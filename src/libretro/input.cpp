@@ -134,6 +134,9 @@ void update_input(InputState *state)
                 ax = round(dr*ax);
                 ay = round(dr*ay);
             }
+			else{
+				ax=ay=0;
+			}
 
             state->touch_x = Clamp(state->touch_x + ax, 0, VIDEO_WIDTH - 1);
             state->touch_y = Clamp(state->touch_y + ay, 0, VIDEO_HEIGHT - 1);
