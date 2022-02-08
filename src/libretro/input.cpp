@@ -105,8 +105,8 @@ void update_input(InputState *state)
             double speed_r=right_stick_speed*inv_analog_stick_acceleration;
 
             double max = (float)0x8000*inv_analog_stick_acceleration;
-            double ax=joystick_lx*speed_l+joystick_rx*speed_r;
-            double ay=joystick_ly*speed_l+joystick_ry*speed_r;
+            double ax=speed_l*joystick_lx+speed_r*joystick_rx;
+            double ay=speed_l*joystick_ly+speed_r*joystick_ry;
             double radius2=ax*ax+ay*ay;
             double max1=analog_stick_deadzone*max;
             double max2=max1*max1;
