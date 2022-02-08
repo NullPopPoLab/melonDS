@@ -47,8 +47,8 @@ bool toggle_swap_screen = false;
 bool swap_screen_toggled = false;
 
 float left_stick_speed=0.8f;
-float right_stick_speed=0.2f;
-float analog_stick_deadzone=0.1f;
+float right_stick_speed=0.1f;
+float analog_stick_deadzone=0.05f;
 float inv_analog_stick_acceleration = 1.0f/2048.0f;
 
 enum CurrentRenderer
@@ -171,9 +171,10 @@ void retro_set_environment(retro_environment_t cb)
   static const retro_variable values[] =
    {
       { "melonds_console_mode", "Console Mode; DS|DSi" },
+      { "melonds_touch_mode", "Touch mode; disabled|Mouse|Touch|Joystick" },
       { "melonds_left_stick_speed", "Left Stick Speed; 0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07|0.1|0.2|0.3|0.4|0.5|0.6|0.7" },
-      { "melonds_right_stick_speed", "Right Stick Speed; 0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07|0.1" },
-      { "melonds_stick_deadzone", "Stick Deadzone Percent; 10|15|20|25|30|35|40|45|50|0|1|2|5" },
+      { "melonds_right_stick_speed", "Right Stick Speed; 0.1|0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07" },
+      { "melonds_stick_deadzone", "Stick Deadzone Percent; 5|10|15|20|25|30|35|40|45|50|0|1|2" },
       { "melonds_boot_directly", "Boot game directly; enabled|disabled" },
       { "melonds_screen_layout", "Screen Layout; Top/Bottom|Bottom/Top|Left/Right|Right/Left|Top Only|Bottom Only|Hybrid Top|Hybrid Bottom" },
       { "melonds_screen_gap", screen_gap.c_str() },
@@ -182,7 +183,6 @@ void retro_set_environment(retro_environment_t cb)
 #ifdef HAVE_THREADS
       { "melonds_threaded_renderer", "Threaded software renderer; disabled|enabled" },
 #endif
-      { "melonds_touch_mode", "Touch mode; disabled|Mouse|Touch|Joystick" },
 #ifdef HAVE_OPENGL
       { "melonds_hybrid_ratio", "Hybrid ratio (OpenGL only); 2|3" },
       { "melonds_opengl_renderer", "OpenGL Renderer (Restart); disabled|enabled" },
@@ -280,6 +280,19 @@ static void check_variables(bool init)
          Config::ConsoleType = 0;
    }
 
+   TouchMode new_touch_mode = TouchMode::Disabled;
+
+   var.key = "melonds_touch_mode";
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "Mouse"))
+         new_touch_mode = TouchMode::Mouse;
+      else if (!strcmp(var.value, "Touch"))
+         new_touch_mode = TouchMode::Touch;
+      else if (!strcmp(var.value, "Joystick"))
+         new_touch_mode = TouchMode::Joystick;
+   }
+
    var.key = "melonds_left_stick_speed";
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -296,7 +309,7 @@ static void check_variables(bool init)
         right_stick_speed = atof(var.value);
     }
     else
-        right_stick_speed = 0.2f;
+        right_stick_speed = 0.1f;
 
     var.key = "melonds_stick_deadzone";
 
@@ -384,19 +397,6 @@ static void check_variables(bool init)
          video_settings.Soft_Threaded = false;
    }
 #endif
-
-   TouchMode new_touch_mode = TouchMode::Disabled;
-
-   var.key = "melonds_touch_mode";
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "Mouse"))
-         new_touch_mode = TouchMode::Mouse;
-      else if (!strcmp(var.value, "Touch"))
-         new_touch_mode = TouchMode::Touch;
-      else if (!strcmp(var.value, "Joystick"))
-         new_touch_mode = TouchMode::Joystick;
-   }
 
 #ifdef HAVE_OPENGL
    if(input_state.current_touch_mode != new_touch_mode) // Hide the cursor
