@@ -46,8 +46,10 @@ bool swapped_screens = false;
 bool toggle_swap_screen = false;
 bool swap_screen_toggled = false;
 
-float left_stick_speed=0.5f;
-float right_stick_speed=0.2f;
+float left_stick_speed=0.8f;
+float right_stick_speed=0.1f;
+float analog_stick_deadzone=0.1f;
+float inv_analog_stick_acceleration = 1.0f/2048.0f;
 
 enum CurrentRenderer
 {
@@ -169,8 +171,9 @@ void retro_set_environment(retro_environment_t cb)
   static const retro_variable values[] =
    {
       { "melonds_console_mode", "Console Mode; DS|DSi" },
-      { "melonds_left_stick_speed", "Left Stick Speed; 0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|0.1|0.2|0.3|0.4" },
-      { "melonds_right_stick_speed", "Right Stick Speed; 0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|0.1" },
+      { "melonds_left_stick_speed", "Left Stick Speed; 0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07|0.1|0.2|0.3|0.4|0.5|0.6|0.7" },
+      { "melonds_right_stick_speed", "Right Stick Speed; 0.1|0.2|0.3|0.4|0.5|0.6|0.7|0.8|0.9|1.0|1.2|1.5|2.0|0.03|0.05|0.07" },
+      { "melonds_stick_deadzone", "Stick Deadzone Percent; 10|15|20|25|30|35|40|45|50|0|1|2|5" },
       { "melonds_boot_directly", "Boot game directly; enabled|disabled" },
       { "melonds_screen_layout", "Screen Layout; Top/Bottom|Bottom/Top|Left/Right|Right/Left|Top Only|Bottom Only|Hybrid Top|Hybrid Bottom" },
       { "melonds_screen_gap", screen_gap.c_str() },
@@ -281,19 +284,24 @@ static void check_variables(bool init)
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
     {
-        left_stick_speed = (float) atof(var.value);
+        left_stick_speed = atof(var.value);
     }
     else
-        left_stick_speed = 0.5f;
+        left_stick_speed = 0.8f;
 
    var.key = "melonds_right_stick_speed";
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
     {
-        right_stick_speed = (float) atof(var.value);
+        right_stick_speed = atof(var.value);
     }
     else
-        right_stick_speed = 0.2f;
+        right_stick_speed = 0.1f;
+
+    var.key = "melonds_stick_deadzone";
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      analog_stick_deadzone = (double)atoi(var.value)/100.0;
 
    var.key = "melonds_boot_directly";
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
