@@ -1,6 +1,7 @@
 #include "input.h"
 #include "libretro_state.h"
 #include "utils.h"
+#include <math.h>
 
 #include "NDS.h"
 
