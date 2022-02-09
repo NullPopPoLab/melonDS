@@ -210,9 +210,8 @@ void retro_set_environment(retro_environment_t cb)
    else
       log_cb = fallback_log;
 
-#if 0
    static const struct retro_controller_description controllers[] = {
-      { "Nintendo DS", RETRO_DEVICE_JOYPAD },
+      { "Nintendo DS", RETRO_DEVICE_ANALOG },
       { NULL, 0 },
    };
 
@@ -222,7 +221,6 @@ void retro_set_environment(retro_environment_t cb)
    };
 
    cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
-#endif
 
    vfs_iface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
    vfs_iface_info.iface = NULL;
