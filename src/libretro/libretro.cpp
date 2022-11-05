@@ -33,8 +33,9 @@ retro_input_state_t input_state_cb;
 retro_log_printf_t log_cb;
 retro_video_refresh_t video_cb;
 
-std::string rom_path;
 std::string save_path;
+
+retro_game_info* cached_info;
 
 GPU::RenderSettings video_settings;
 
@@ -46,6 +47,7 @@ bool swapped_screens = false;
 bool toggle_swap_screen = false;
 bool swap_screen_toggled = false;
 
+const int SLOT_1_2_BOOT = 1;
 float left_stick_speed=0.8f;
 float right_stick_speed=0.1f;
 float analog_stick_deadzone=0.05f;
@@ -98,8 +100,8 @@ void retro_get_system_info(struct retro_system_info *info)
 #define GIT_VERSION ""
 #endif
    info->library_version  = MELONDS_VERSION GIT_VERSION;
-   info->need_fullpath    = true;
-   info->valid_extensions = "nds";
+   info->need_fullpath    = false;
+   info->valid_extensions = "nds|dsi";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
@@ -117,6 +119,17 @@ void retro_set_environment(retro_environment_t cb)
 {
    struct retro_vfs_interface_info vfs_iface_info;
    environ_cb = cb;
+
+   static const struct retro_system_content_info_override content_overrides[] = {
+      {
+         "nds|dsi|gba",
+         false,
+         true
+      },
+      { NULL, false, false}
+   };
+
+   environ_cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)content_overrides);
 
    std::string screen_gap = "Screen gap; ";
 
@@ -180,6 +193,7 @@ void retro_set_environment(retro_environment_t cb)
       { "melonds_screen_gap", screen_gap.c_str() },
       { "melonds_hybrid_small_screen", "Hybrid small screen mode; Bottom|Top|Duplicate" },
       { "melonds_swapscreen_mode", "Swap Screen mode; Toggle|Hold" },
+      { "melonds_randomize_mac_address", "Randomize MAC address; disabled|enabled" },
 #ifdef HAVE_THREADS
       { "melonds_threaded_renderer", "Threaded software renderer; disabled|enabled" },
 #endif
@@ -222,6 +236,27 @@ void retro_set_environment(retro_environment_t cb)
 
    cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 
+   static const struct retro_subsystem_memory_info gba_memory[] = {
+      { "srm", 0x101 },
+	};
+
+   static const struct retro_subsystem_memory_info nds_memory[] = {
+      { "sav", 0x102 },
+	};
+
+   static const struct retro_subsystem_rom_info slot_1_2_roms[] {
+      { "NDS Rom (Slot 1)", "nds", false, false, true, nds_memory, 0 },
+      { "GBA Rom (Slot 2)", "gba", false, false, true, gba_memory, 1 },
+      {}
+   };
+
+   static const struct retro_subsystem_info subsystems[] = {
+		{ "Slot 1/2 Boot", "gba", slot_1_2_roms, 2, SLOT_1_2_BOOT },
+      {}
+	};
+
+   cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
+
    vfs_iface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
    vfs_iface_info.iface = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_iface_info))
@@ -260,7 +295,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 void retro_reset(void)
 {
    NDS::Reset();
-   NDS::LoadROM(rom_path.c_str(), save_path.c_str(), Config::DirectBoot);
+   NDS::LoadROM((u8*)cached_info->data, cached_info->size, save_path.c_str(), Config::DirectBoot);
 }
 
 static void check_variables(bool init)
@@ -385,6 +420,15 @@ static void check_variables(bool init)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value != NULL)
    {
       toggle_swap_screen = !strcmp(var.value, "Toggle");
+   }
+
+   var.key = "melonds_randomize_mac_address";
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         Config::RandomizeMAC = 1;
+      else
+         Config::RandomizeMAC = 0;
    }
 
 #ifdef HAVE_THREADS
@@ -682,8 +726,16 @@ void retro_run(void)
    NDSCart_SRAMManager::Flush();
 }
 
-bool retro_load_game(const struct retro_game_info *info)
+bool _handle_load_game(unsigned type, const struct retro_game_info *info, size_t num)
 {
+   /*
+   * FIXME: Less bad than copying the whole data pointer, but still not great.
+   * NDS::Reset() calls wipes the cart buffer so on invoke we need a reload from info->data.
+   * Since retro_reset callback doesn't pass the info struct we need to cache it
+   * here.
+   */
+   cached_info = const_cast<retro_game_info*>(info);
+
    std::vector <std::string> required_roms = {"bios7.bin", "bios9.bin", "firmware.bin"};
    std::vector <std::string> missing_roms;
 
@@ -804,7 +856,6 @@ bool retro_load_game(const struct retro_game_info *info)
    char game_name[256];
    fill_pathname_base_noext(game_name, info->path, sizeof(game_name));
 
-   rom_path = std::string(info->path);
    save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + ".sav";
 
    GPU::InitRenderer(false);
@@ -812,11 +863,27 @@ bool retro_load_game(const struct retro_game_info *info)
    SPU::SetInterpolation(Config::AudioInterp);
    NDS::SetConsoleType(Config::ConsoleType);
    Frontend::LoadBIOS();
-   NDS::LoadROM(rom_path.c_str(), save_path.c_str(), Config::DirectBoot);
+   NDS::LoadROM((u8*)info->data, info->size, save_path.c_str(), Config::DirectBoot);
+   
+   if(type == SLOT_1_2_BOOT)
+   {
+      char gba_game_name[256];
+      std::string gba_save_path;
+
+      fill_pathname_base_noext(gba_game_name, info[1].path, sizeof(gba_game_name));
+      gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(gba_game_name) + ".srm";
+
+      NDS::LoadGBAROM((u8*)info[1].data, info[1].size, gba_game_name, gba_save_path.c_str());
+   }
 
    (void)info;
 
    return true;
+}
+
+bool retro_load_game(const struct retro_game_info *info)
+{
+   return _handle_load_game(NULL, info, NULL);
 }
 
 void retro_unload_game(void)
@@ -831,7 +898,7 @@ unsigned retro_get_region(void)
 
 bool retro_load_game_special(unsigned type, const struct retro_game_info *info, size_t num)
 {
-   return false;
+   return _handle_load_game(type, info, num);
 }
 
 #define MAX_SERIALIZE_TEST_SIZE 16 * 1024 * 1024 // The current savestate is around 7MiB so 16MiB should be enough for now

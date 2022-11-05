@@ -56,10 +56,6 @@ TARGET_NAME := melonds
 LIBS		    = -lm
 DEFINES :=
 
-ifneq ($(findstring Haiku,$(shell uname -s)),)
-LIBS += -lnetwork
-endif
-
 # GIT HASH
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
@@ -76,7 +72,11 @@ ifeq ($(platform), unix)
    fpic := -fPIC
    SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
    CFLAGS += -D_GNU_SOURCE
-   LIBS += -lpthread -lrt
+   ifneq ($(findstring Haiku,$(shell uname -s)),)
+      LIBS += -lpthread -lroot -lnetwork
+   else
+      LIBS += -lpthread -lrt
+   endif
    HAVE_THREADS=1
    ifneq ($(filter $(ARCH),x86 x86_64),)
      LIBS += -lGL
@@ -172,7 +172,7 @@ else ifneq (,$(findstring qnx,$(platform)))
 else ifeq ($(platform), emscripten)
    TARGET := $(TARGET_NAME)_libretro_emscripten.bc
    fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl
 else ifeq ($(platform), vita)
    TARGET := $(TARGET_NAME)_vita.a
    CC = arm-vita-eabi-gcc
@@ -280,6 +280,19 @@ else ifeq ($(platform), odroidn2)
    HAVE_THREADS = 1
    JIT_ARCH = aarch64
    
+# Rockchip RK3399
+else ifeq ($(platform), RK3399)
+   EXT ?= so
+   CPUFLAGS += -mcpu=cortex-a72.cortex-a53 -mtune=cortex-a72.cortex-a53
+   HAVE_NEON = 1
+   TARGET := $(TARGET_NAME)_libretro.$(EXT)
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+   LIBS += -lpthread -lGLESv2
+   HAVE_OPENGLES3 = 1
+   HAVE_THREADS = 1
+   JIT_ARCH = aarch64
+
 # Orange Pi Zero 2
 else ifeq ($(platform), orangepizero2)
    EXT ?= so
