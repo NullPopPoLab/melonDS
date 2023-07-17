@@ -24,6 +24,7 @@
 #endif
 
 #include <utility>
+#include <file/file_path.h>
 
 #ifdef ARCHIVE_SUPPORT_ENABLED
 #include "ArchiveUtil.h"
@@ -87,8 +88,11 @@ void DeInit_ROM()
 void SetupSRAMPath(int slot)
 {
     strncpy(SRAMPath[slot], ROMPath[slot], 1023);
+	SRAMPath[slot][strlen(ROMPath[slot]) - 4]=0;
+	path_mkdir(SRAMPath[slot]);
+    strncat(SRAMPath[slot], "/melonds_save0.sav",1023);
+	SRAMPath[slot][strlen(SRAMPath[slot])-5]='0'+slot;
     SRAMPath[slot][1023] = '\0';
-    strncpy(SRAMPath[slot] + strlen(ROMPath[slot]) - 3, "sav", 3);
 }
 
 int VerifyDSBIOS()
