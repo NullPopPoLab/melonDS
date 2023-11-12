@@ -768,14 +768,14 @@ bool _handle_load_game(unsigned type, const struct retro_game_info *info, size_t
       log_cb(RETRO_LOG_ERROR, msg.c_str());
    }
 
-   strcpy(Config::BIOS7Path, "nds/bios7.bin");
-   strcpy(Config::BIOS9Path, "nds/bios9.bin");
-   strcpy(Config::FirmwarePath, "nds/firmware.bin");
-   strcpy(Config::DSiBIOS7Path, "nds/dsi_bios7.bin");
-   strcpy(Config::DSiBIOS9Path, "nds/dsi_bios9.bin");
-   strcpy(Config::DSiFirmwarePath, "nds/dsi_firmware.bin");
-   strcpy(Config::DSiNANDPath, "nds/dsi_nand.bin");
-   strcpy(Config::DSiSDPath, "nds/dsi_sd_card.bin");
+   strcpy(Config::BIOS7Path, "bios7.bin");
+   strcpy(Config::BIOS9Path, "bios9.bin");
+   strcpy(Config::FirmwarePath, "firmware.bin");
+   strcpy(Config::DSiBIOS7Path, "dsi_bios7.bin");
+   strcpy(Config::DSiBIOS9Path, "dsi_bios9.bin");
+   strcpy(Config::DSiFirmwarePath, "dsi_firmware.bin");
+   strcpy(Config::DSiNANDPath, "dsi_nand.bin");
+   strcpy(Config::DSiSDPath, "dsi_sd_card.bin");
    strcpy(Config::FirmwareUsername, "MelonDS");
 
    struct retro_input_descriptor desc[] = {
