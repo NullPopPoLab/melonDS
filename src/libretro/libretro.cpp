@@ -55,6 +55,11 @@ bool swap_screen_toggled = false;
 
 const int SLOT_1_2_BOOT = 1;
 
+float left_stick_speed=0.8f;
+float right_stick_speed=0.1f;
+float analog_stick_deadzone=0.05f;
+float inv_analog_stick_acceleration = 1.0f/2048.0f;
+
 static bool libretro_supports_option_categories = false;
 #ifdef HAVE_OPENGL
 static bool opengl_options = true;
@@ -248,7 +253,7 @@ void retro_set_environment(retro_environment_t cb)
       log_cb = fallback_log;
 
    static const struct retro_controller_description controllers[] = {
-      { "Nintendo DS", RETRO_DEVICE_JOYPAD },
+      { "Nintendo DS", RETRO_DEVICE_ANALOG },
       { NULL, 0 },
    };
 
@@ -341,6 +346,42 @@ static void check_variables(bool init)
          Config::ConsoleType = 0;
    }
 
+   TouchMode new_touch_mode = TouchMode::Disabled;
+
+   var.key = "melonds_touch_mode";
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "Mouse"))
+         new_touch_mode = TouchMode::Mouse;
+      else if (!strcmp(var.value, "Touch"))
+         new_touch_mode = TouchMode::Touch;
+      else if (!strcmp(var.value, "Joystick"))
+         new_touch_mode = TouchMode::Joystick;
+   }
+
+   var.key = "melonds_left_stick_speed";
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        left_stick_speed = atof(var.value);
+    }
+    else
+        left_stick_speed = 0.8f;
+
+   var.key = "melonds_right_stick_speed";
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        right_stick_speed = atof(var.value);
+    }
+    else
+        right_stick_speed = 0.1f;
+
+    var.key = "melonds_stick_deadzone";
+
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      analog_stick_deadzone = (double)atoi(var.value)/100.0;
+
    var.key = "melonds_boot_directly";
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
@@ -431,19 +472,6 @@ static void check_variables(bool init)
          video_settings.Soft_Threaded = false;
    }
 #endif
-
-   TouchMode new_touch_mode = TouchMode::Disabled;
-
-   var.key = "melonds_touch_mode";
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-   {
-      if (!strcmp(var.value, "Mouse"))
-         new_touch_mode = TouchMode::Mouse;
-      else if (!strcmp(var.value, "Touch"))
-         new_touch_mode = TouchMode::Touch;
-      else if (!strcmp(var.value, "Joystick"))
-         new_touch_mode = TouchMode::Joystick;
-   }
 
 #ifdef HAVE_OPENGL
    if(input_state.current_touch_mode != new_touch_mode) // Hide the cursor

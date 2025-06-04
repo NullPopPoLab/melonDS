@@ -1,12 +1,18 @@
 #include "input.h"
 #include "libretro_state.h"
 #include "utils.h"
+#include <math.h>
 
 #include "NDS.h"
 
 InputState input_state;
 u32 input_mask = 0xFFF;
 static bool has_touched = false;
+
+extern float left_stick_speed;
+extern float right_stick_speed;
+extern float analog_stick_deadzone;
+extern float inv_analog_stick_acceleration;
 
 #define ADD_KEY_TO_MASK(key, i, bits) if (bits & (1 << key)) input_mask &= ~(1 << i); else input_mask |= (1 << i);
 
@@ -104,11 +110,46 @@ void update_input(InputState *state)
 
             break;
          case TouchMode::Joystick:
-            int16_t joystick_x = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X) / 2048;
-            int16_t joystick_y = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y) / 2048;
+            static float cursor_x=0.0f,cursor_y=0.0f;
+            int16_t joystick_lx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+            int16_t joystick_ly = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+            int16_t joystick_rx = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
+            int16_t joystick_ry = input_state_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
+            double speed_l=left_stick_speed*inv_analog_stick_acceleration;
+            double speed_r=right_stick_speed*inv_analog_stick_acceleration;
 
-            state->touch_x = Clamp(state->touch_x + joystick_x, 0, VIDEO_WIDTH - 1);
-            state->touch_y = Clamp(state->touch_y + joystick_y, 0, VIDEO_HEIGHT - 1);
+            double max = (float)0x8000*inv_analog_stick_acceleration;
+            double ax=speed_l*joystick_lx+speed_r*joystick_rx;
+            double ay=speed_l*joystick_ly+speed_r*joystick_ry;
+            double radius2=ax*ax+ay*ay;
+            double max1=analog_stick_deadzone*max;
+            double max2=max1*max1;
+            if(radius2 > max2)
+            {
+                // Re-scale analog stick range to negate deadzone (makes slow movements possible)
+                double radius=sqrt(radius2);
+                double radius3 = radius - max1*(max/(max - max1));
+                double dr=radius3/radius;
+
+                // Convert back to cartesian coordinates
+                ax *= dr;
+                ay *= dr;
+            }
+			else{
+				ax=ay=0;
+			}
+
+            cursor_x+=ax;
+            cursor_y+=ay;
+            double width=VIDEO_WIDTH - 1;
+            double height=VIDEO_HEIGHT - 1;
+            if (cursor_x < 0) cursor_x = 0;
+            else if (cursor_x > width) cursor_x = width;
+            if (cursor_y < 0) cursor_y = 0;
+            else if (cursor_y > height) cursor_y = height;
+
+            state->touch_x = cursor_x;
+            state->touch_y = cursor_y;
 
             state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
 
