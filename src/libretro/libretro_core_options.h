@@ -56,6 +56,11 @@ struct retro_core_option_v2_category option_cats_us[] = {
       "Change system settings."
    },
    {
+      "input",
+      "Input",
+      "Change input settings."
+   },
+   {
       "video",
       "Video",
       "Change video settings."
@@ -101,7 +106,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       NULL,
       NULL,
       NULL,
-      "system",
+      "input",
       {
          { "0.1", NULL },
          { "0.2", NULL },
@@ -125,7 +130,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       NULL,
       NULL,
       NULL,
-      "system",
+      "input",
       {
          { "0.1", NULL },
          { "0.2", NULL },
