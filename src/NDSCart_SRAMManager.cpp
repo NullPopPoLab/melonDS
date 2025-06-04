@@ -23,6 +23,8 @@
 #include "NDSCart_SRAMManager.h"
 #include "Platform.h"
 
+void retro_make_savedir(const char* path);
+
 namespace NDSCart_SRAMManager
 {
 Platform::Thread* FlushThread;
@@ -166,6 +168,8 @@ void FlushSecondaryBuffer(u8* dst, s32 dstLength)
     }
     else
     {
+		retro_make_savedir(Path);
+
         FILE* f = Platform::OpenFile(Path, "wb");
         if (f)
         {
