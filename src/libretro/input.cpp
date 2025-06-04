@@ -48,7 +48,7 @@ void update_input(InputState *state)
 
    NDS::SetKeyMask(input_mask);
 
-   bool lid_closed_btn = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3);
+   bool lid_closed_btn = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MENU);
    if(lid_closed_btn != state->lid_closed)
    {
       NDS::SetLidClosed(lid_closed_btn);
@@ -56,7 +56,7 @@ void update_input(InputState *state)
    }
 
    state->holding_noise_btn = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   state->swap_screens_btn = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   state->swap_screens_btn = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_G8);
 
    if(current_screen_layout != ScreenLayout::TopOnly)
    {
@@ -110,7 +110,7 @@ void update_input(InputState *state)
             state->touch_x = Clamp(state->touch_x + joystick_x, 0, VIDEO_WIDTH - 1);
             state->touch_y = Clamp(state->touch_y + joystick_y, 0, VIDEO_HEIGHT - 1);
 
-            state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
+            state->touching = !!input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
 
             break;
       }
