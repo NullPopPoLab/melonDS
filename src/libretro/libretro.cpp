@@ -24,7 +24,7 @@
 #include "screenlayout.h"
 #include "utils.h"
 
-#define CUSTOM_VERSION "+NC41"
+#define CUSTOM_VERSION "+NCA41"
 
 char retro_base_directory[4096];
 static char retro_saves_directory[4096];
