@@ -8,6 +8,7 @@
 #include <streams/file_stream_transforms.h>
 #include <file/file_path.h>
 #include <compat/strl.h>
+#include <sys/stat.h>
 
 #include "Config.h"
 #include "Platform.h"
@@ -920,7 +921,7 @@ static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
       strlcpy(game_name, info->path, sizeof(game_name));
    path_remove_extension(game_name);
 
-   save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + ".sav";
+   save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) + "nvram.sav";
 
    GPU::InitRenderer(false);
    GPU::SetRenderSettings(false, video_settings);
@@ -940,7 +941,7 @@ static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
          strlcpy(gba_game_name, info[1].path, sizeof(gba_game_name));
       path_remove_extension(gba_game_name);
 
-      gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(gba_game_name) + ".srm";
+      gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(gba_game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) + "nvram.srm";
 
       NDS::LoadGBAROM((u8*)info[1].data, info[1].size, gba_game_name, gba_save_path.c_str());
    }
@@ -1066,4 +1067,15 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
     pch = strtok(NULL, " +");
    }
    AREngine::RunCheat(curcode);
+}
+
+void retro_make_savedir(const char* path)
+{
+	char path2[4096];
+	strncpy(path2,path,sizeof(path2));
+	path2[sizeof(path2)-1]=0;
+	path_parent_dir(path2);
+	log_cb(RETRO_LOG_INFO, "retro_make_savedir: %s\n", path2);
+	if(!path2[0])return;
+	path_mkdir(path2);
 }

@@ -28,6 +28,8 @@
 #define ftell(stream) memstream_pos(stream)
 #endif
 
+void retro_make_savedir(const char* path);
+
 /*
     Savestate format
 
@@ -74,6 +76,7 @@ Savestate::Savestate(const char* filename, bool save)
             return;
         }
 #else
+		retro_make_savedir(filename);
         file = Platform::OpenFile(filename, "wb");
         if (!file)
         {
