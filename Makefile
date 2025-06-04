@@ -240,7 +240,20 @@ else ifeq ($(platform), rpi4_64)
    HAVE_OPENGLES3 = 1
    HAVE_THREADS = 1
    JIT_ARCH = aarch64
-   
+
+# RPi5
+else ifeq ($(platform), rpi5_64)
+   EXT ?= so
+   CPUFLAGS += -mcpu=cortex-a76 -mtune=cortex-a76
+   HAVE_NEON = 1
+   TARGET := $(TARGET_NAME)_libretro.$(EXT)
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+   LIBS += -lpthread -lGLESv2
+   HAVE_OPENGLES3 = 1
+   HAVE_THREADS = 1
+   JIT_ARCH = aarch64
+
 # Odroid C4
 else ifeq ($(platform), odroidc4)
    EXT ?= so
@@ -293,6 +306,20 @@ else ifeq ($(platform), RK3399)
    HAVE_THREADS = 1
    JIT_ARCH = aarch64
 
+# Rockchip RK3588
+else ifeq ($(platform), RK3588)
+   EXT ?= so
+   CPUFLAGS += -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
+   HAVE_NEON = 1
+   TARGET := $(TARGET_NAME)_libretro.$(EXT)
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+   LIBS += -lpthread
+   HAVE_OPENGLES3 = 1
+   HAVE_OPENGL = 0
+   HAVE_THREADS = 1
+   JIT_ARCH = aarch64
+
 # Orange Pi Zero 2
 else ifeq ($(platform), orangepizero2)
    EXT ?= so
@@ -303,6 +330,20 @@ else ifeq ($(platform), orangepizero2)
    SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
    LIBS += -lpthread -lGLESv2
    HAVE_OPENGLES3 = 1
+   HAVE_THREADS = 1
+   JIT_ARCH = aarch64
+
+# SM8250
+else ifeq ($(platform), sm8250)
+   EXT ?= so
+   CPUFLAGS += -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
+   HAVE_NEON = 1
+   TARGET := $(TARGET_NAME)_libretro.$(EXT)
+   fpic := -fPIC
+   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/link.T -Wl,--no-undefined
+   LIBS += -lpthread
+   HAVE_OPENGLES3 = 1
+   HAVE_OPENGL = 0
    HAVE_THREADS = 1
    JIT_ARCH = aarch64
 
