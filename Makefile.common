@@ -12,7 +12,12 @@ SOURCES_C   := $(MELON_DIR)/xxhash/xxhash.c \
                $(MELON_DIR)/fatfs/ff.c \
                $(MELON_DIR)/fatfs/ffsystem.c \
                $(MELON_DIR)/fatfs/ffunicode.c \
-               $(MELON_DIR)/sha1/sha1.c
+               $(MELON_DIR)/sha1/sha1.c \
+               $(MELON_DIR)/mk5s/advanced_m3u.c \
+               $(MELON_DIR)/mk5s/quick_loader.c \
+               $(MELON_DIR)/mk5s/quick_path.c \
+               $(MELON_DIR)/mk5s/quick_text.c \
+               $(MELON_DIR)/mk5s/safe_alloc.c
 SOURCES_S   :=
 
 ifneq ($(STATIC_LINKING), 1)
