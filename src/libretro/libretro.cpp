@@ -24,10 +24,18 @@
 #include "screenlayout.h"
 #include "utils.h"
 
+#include "mk5s/advanced_m3u.h"
+#include "mk5s/quick_path.h"
+
 #define CUSTOM_VERSION "+NC41"
 
 char retro_base_directory[4096];
 static char retro_saves_directory[4096];
+
+#define MAX_GBA_CHANGEE 10
+AdvancedM3U *am3u=NULL;
+AdvancedM3UDevice *am3u_nds=NULL;
+AdvancedM3UDevice *am3u_gba=NULL;
 
 struct retro_log_callback logging;
 
@@ -124,7 +132,7 @@ void retro_get_system_info(struct retro_system_info *info)
 #endif
    info->library_version  = MELONDS_VERSION GIT_VERSION CUSTOM_VERSION;
    info->need_fullpath    = false;
-   info->valid_extensions = "nds|ids|dsi";
+   info->valid_extensions = "nds|ids|dsi|m3u";
 }
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
@@ -238,7 +246,7 @@ void retro_set_environment(retro_environment_t cb)
 
    static const struct retro_system_content_info_override content_overrides[] = {
       {
-         "nds|dsi|gba",
+         "nds|dsi|gba|m3u",
          false,
          true
       },
@@ -816,6 +824,58 @@ void Mic_FeedNoise()
     NDS::MicInputFrame(tmp, 735);
 }
 
+static void am3u_release(){
+
+	am3u_nds=NULL;
+	am3u_gba=NULL;
+	if(am3u)am3u_free(&am3u);
+}
+
+static void am3u_init(){
+
+	am3u_release();
+
+	am3u=am3u_new();
+	am3u_nds=am3u_get_device(am3u,'D');
+	am3u_device_set_changer(am3u_nds,1);
+	am3u_device_set_slots(am3u_nds,1);
+	am3u_gba=am3u_get_device(am3u,'A');
+	am3u_device_set_changer(am3u_gba,MAX_GBA_CHANGEE);
+	am3u_device_set_slots(am3u_gba,1);
+}
+
+static bool am3u_error(void* user,int code,int lineloc,const QTextRef* line){
+
+   if (!log_cb) return true;
+
+	char* msg=qtext_alloc_q(line);
+
+	  log_cb(RETRO_LOG_ERROR,
+                      "M3U error %d in line %d: %s\n",
+                      code,lineloc,msg);
+	
+	qtext_free(&msg);
+
+	return true;
+}
+
+static int am3u_device_selector(void* user,const QTextRef* path){
+
+	return (am3u_nds->changee_used<1)?'D':'A';
+}
+
+static size_t handle_extension(char *path, char *ext)
+{
+   size_t len = strlen(path);
+   if (len >= 4 &&
+         path[len - 4] == '.' &&
+         path[len - 3] == ext[0] &&
+         path[len - 2] == ext[1] &&
+         path[len - 1] == ext[2])
+      return 1;
+   return 0;
+}
+
 static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
 {
    /*
@@ -927,9 +987,55 @@ static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
    SPU::SetInterpolation(Config::AudioInterp);
    NDS::SetConsoleType(Config::ConsoleType);
    Frontend::LoadBIOS();
-   NDS::LoadROM((u8*)info->data, info->size, save_path.c_str(), Config::DirectBoot);
+
+	am3u_init();
+	if (handle_extension((char*)info->path, "m3u") || handle_extension((char*)info->path, "M3U")){
+		QTextRef imgref;
+		qtext_ref_q(&imgref,(const char*)info->data, info->size);
+		QTextRef m3udir;
+		qpath_dirname_c(&m3udir,(const char*)info->path);
+		am3u_setup_q(am3u,&imgref,&m3udir,am3u_device_selector,am3u_error,NULL);
+
+		if(am3u_nds->slot_tbl[0]<0){
+			if(am3u_nds->changee_used>0){
+				am3u_nds->slot_tbl[0]=0;
+			}
+		}
+		if(am3u_nds->slot_tbl[0]>=0){
+			const AdvancedM3UMedia* media=&am3u_nds->changee_tbl[am3u_nds->slot_tbl[0]];
+
+			log_cb(RETRO_LOG_INFO, "NDS slot: %s\n", media->path);
+
+			NDS::LoadROM(media->path, save_path.c_str(), Config::DirectBoot);
+		}
+	}
+	else{
+		QTextRef qpath;
+		qtext_ref_c(&qpath,info->path);
+		am3u_device_add_media(am3u_get_device(am3u,'D'),1,false,NULL,&qpath,NULL);
+
+		log_cb(RETRO_LOG_INFO, "NDS slot: %s\n", info->path);
+
+		NDS::LoadROM((u8*)info->data, info->size, save_path.c_str(), Config::DirectBoot);
+	}
    
-   if (type == SLOT_1_2_BOOT)
+	if(am3u_gba->changee_used>0){
+		if(am3u_gba->slot_tbl[0]<0){
+			if(am3u_gba->changee_used>0){
+				am3u_gba->slot_tbl[0]=0;
+			}
+		}
+		if(am3u_gba->slot_tbl[0]>=0){
+			const AdvancedM3UMedia* media=&am3u_gba->changee_tbl[am3u_gba->slot_tbl[0]];
+
+			log_cb(RETRO_LOG_INFO, "GBA slot: %s\n", media->path);
+
+			std::string gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) +media->label+ ".srm";
+
+			NDS::LoadGBAROM(media->path, gba_save_path.c_str());
+		}
+	}
+   else if (type == SLOT_1_2_BOOT)
    {
       char gba_game_name[256];
       std::string gba_save_path;
@@ -956,6 +1062,8 @@ bool retro_load_game(const struct retro_game_info *info)
 void retro_unload_game(void)
 {
    NDS::DeInit();
+
+	am3u_release();
 }
 
 unsigned retro_get_region(void)
