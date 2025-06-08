@@ -78,6 +78,9 @@ static bool hybrid_options = true;
 static bool jit_options = true;
 #endif
 
+static struct retro_disk_control_ext2_callback dskcb;
+static unsigned diskidx=0;
+
 static void Mic_FeedNoise();
 static u8 micNoiseType;
 
@@ -99,6 +102,121 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
    va_end(va);
 }
 
+static bool set_drive_eject_state(unsigned drive, bool ejected)
+{
+	AdvancedM3UDevice *dev=drive?am3u_gba:am3u_nds;
+
+	if(!dev)return false;
+
+	if(ejected){
+		am3u_device_remove_media(dev,0);
+	}
+	else switch(drive){
+		case 0: // NDS 
+		if(diskidx>=diskidx-am3u_nds->changee_used)return false;
+		am3u_device_set_media(dev,0,diskidx);
+		break;
+
+		case 1: // GBA 
+		if(diskidx<am3u_nds->changee_used)return false;
+		am3u_device_set_media(dev,0,diskidx-am3u_nds->changee_used);
+		break;
+	}
+	return true;
+}
+
+bool get_drive_eject_state(unsigned drive)
+{
+	AdvancedM3UDevice *dev=drive?am3u_gba:am3u_nds;
+	if(!dev)return false;
+
+   return !am3u_device_get_media(dev,0);
+}
+
+static unsigned get_image_index(void)
+{
+	return diskidx;
+}
+
+static bool set_image_index(unsigned index)
+{
+   diskidx = index;
+   return true;
+}
+
+static unsigned get_num_drives(void)
+{
+   return 2;
+}
+
+static unsigned get_num_images(void)
+{
+   return am3u_nds->changee_used+am3u_gba->changee_used;
+}
+
+static bool disk_get_image_path(unsigned index, char *path, size_t len)
+{
+	if (len < 1) return false;
+
+	AdvancedM3UMedia* media=(index<am3u_nds->changee_used)?
+		&am3u_nds->changee_tbl[index]:
+		&am3u_gba->changee_tbl[index-am3u_nds->changee_used];
+
+	if(!media)return false;
+	if(!media->path)return false;
+
+    strncpy(path, media->path, len);
+    return true;
+}
+
+static bool disk_get_image_label(unsigned index, char *label, size_t len)
+{
+	AdvancedM3UMedia* media=(index<am3u_nds->changee_used)?
+		&am3u_nds->changee_tbl[index]:
+		&am3u_gba->changee_tbl[index-am3u_nds->changee_used];
+
+	if(!media)return false;
+	char* src=media->label;
+	if(!src)src=media->path;
+	if(!src)return false;
+
+    strncpy(label, src, len);
+    return true;
+}
+
+static int disk_get_drive_image_index(unsigned drive)
+{
+	if(drive>=get_num_drives())return -1;
+	if(get_drive_eject_state(drive))return -1;
+
+	switch(drive){
+		case 0:
+		return am3u_nds->slot_tbl[0];
+
+		case 1:
+		if(am3u_nds->slot_tbl[0]<0)return -1;
+		return am3u_nds->changee_used+am3u_gba->slot_tbl[0];
+	}
+
+	return -1;
+}
+
+void attach_disk_swap_interface(void)
+{
+   memset(&dskcb,0,sizeof(dskcb));
+   dskcb.set_drive_eject_state = set_drive_eject_state;
+   dskcb.get_drive_eject_state = get_drive_eject_state;
+   dskcb.set_image_index = set_image_index;
+   dskcb.get_image_index = get_image_index;
+   dskcb.get_num_drives  = get_num_drives;
+   dskcb.get_num_images  = get_num_images;
+   dskcb.get_image_path = disk_get_image_path;
+   dskcb.get_image_label = disk_get_image_label;
+   dskcb.get_drive_image_index = disk_get_drive_image_index;
+
+   environ_cb(RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT2_INTERFACE, &dskcb);
+}
+
 void retro_init(void)
 {
    const char *dir = NULL;
@@ -111,6 +229,8 @@ void retro_init(void)
       sprintf(retro_saves_directory, "%s", dir);
 
    initialize_screnlayout_data(&screen_layout_data);
+
+	attach_disk_swap_interface();
 }
 
 void retro_deinit(void)
