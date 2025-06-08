@@ -47,7 +47,12 @@ retro_input_state_t input_state_cb;
 retro_log_printf_t log_cb;
 retro_video_refresh_t video_cb;
 
-std::string save_path;
+u8* preloaded_nds_data=NULL;
+size_t preloaded_nds_size=0;
+u8* preloaded_gba_data=NULL;
+size_t preloaded_gba_size=0;
+std::string save_path_nds;
+std::string save_path_gba;
 
 retro_game_info* cached_info;
 
@@ -452,10 +457,96 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
    log_cb(RETRO_LOG_INFO, "Plugging device %u into port %u.\n", device, port);
 }
 
+static std::string path2gamename(bool deep,const char* path){
+
+	char game_name[PATH_MAX];
+	if(!deep){
+		const char *ptr = path_basename(path);
+		if (ptr)
+			strlcpy(game_name, ptr, sizeof(game_name));
+		else
+			strlcpy(game_name, path, sizeof(game_name));
+	}
+	else{
+		strlcpy(game_name, path, sizeof(game_name));
+	}
+
+	path_remove_extension(game_name);
+	return std::string(game_name);
+}
+
+static void update_save_path(const char* ndspath,const char* gbapath){
+
+	std::string savebase;
+	const char *savedir;
+	if (environ_cb(RETRO_ENVIRONMENT_GET_GAME_SAVE_DIRECTORY, &savedir) && savedir)
+		savebase=std::string(savedir) + std::string(1, PLATFORM_DIR_SEPERATOR);
+	else
+		savebase=std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR);
+
+	if(preloaded_nds_data){
+		save_path_nds = savebase + "nvram.sav";
+	}
+	else if(!ndspath){
+		save_path_nds = savebase + "_.nds.sav";
+	}
+	else{
+		std::string ndsname=path2gamename(false,ndspath);
+		save_path_nds = savebase + ndsname+".nds.sav";
+	}
+
+	if(preloaded_gba_data){
+		std::string gbaname=path2gamename(false,gbapath);
+		save_path_gba = savebase + gbaname+".gba.srm";
+	}
+	else if(!gbapath){
+		save_path_gba = savebase + "_.gba.srm";
+	}
+	else{
+		std::string gbaname=path2gamename(false,gbapath);
+		save_path_gba = savebase + gbaname+".gba.srm";
+	}
+}
+
+static void set_media(){
+
+	const AdvancedM3UMedia* media_nds=(am3u_nds->slot_tbl[0]<0)?NULL:&am3u_nds->changee_tbl[am3u_nds->slot_tbl[0]];
+	const AdvancedM3UMedia* media_gba=(am3u_gba->slot_tbl[0]<0)?NULL:&am3u_gba->changee_tbl[am3u_gba->slot_tbl[0]];
+
+	update_save_path(media_nds?media_nds->path:NULL,media_gba?media_gba->path:NULL);
+
+	if(preloaded_nds_data){
+		log_cb(RETRO_LOG_INFO, "NDS slot: (use preloaded)\n");
+		log_cb(RETRO_LOG_INFO, "NDS save: %s\n",save_path_nds.c_str());
+
+		NDS::LoadROM(preloaded_nds_data, preloaded_nds_size, save_path_nds.c_str(), Config::DirectBoot);
+
+		if(preloaded_gba_data){
+			log_cb(RETRO_LOG_INFO, "GBA slot: (use preloaded)\n");
+			log_cb(RETRO_LOG_INFO, "GBA save: %s\n",save_path_gba.c_str());
+			NDS::LoadGBAROM(preloaded_gba_data, preloaded_gba_size, path2gamename(false,media_gba?media_gba->path:NULL).c_str(), save_path_gba.c_str());
+		}
+		return;
+	}
+
+	if(media_nds){
+		log_cb(RETRO_LOG_INFO, "NDS slot: %s\n", media_nds->path);
+		log_cb(RETRO_LOG_INFO, "NDS save: %s\n",save_path_nds.c_str());
+
+		NDS::LoadROM(media_nds->path, save_path_nds.c_str(), Config::DirectBoot);
+	}
+	if(media_gba){
+		log_cb(RETRO_LOG_INFO, "GBA slot: %s\n", media_gba->path);
+		log_cb(RETRO_LOG_INFO, "GBA save: %s\n",save_path_gba.c_str());
+
+		NDS::LoadGBAROM(media_gba->path, save_path_gba.c_str());
+	}
+}
+
 void retro_reset(void)
 {
-   NDS::Reset();
-   NDS::LoadROM((u8*)cached_info->data, cached_info->size, save_path.c_str(), Config::DirectBoot);
+	NDS::Reset();
+	set_media();
 }
 
 static void check_variables(bool init)
@@ -1093,16 +1184,6 @@ static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
    if(!NDS::Init())
       return false;
 
-   char game_name[256];
-   const char *ptr = path_basename(info->path);
-   if (ptr)
-      strlcpy(game_name, ptr, sizeof(game_name));
-   else
-      strlcpy(game_name, info->path, sizeof(game_name));
-   path_remove_extension(game_name);
-
-   save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) + "nvram.sav";
-
    GPU::InitRenderer(false);
    GPU::SetRenderSettings(false, video_settings);
    SPU::SetInterpolation(Config::AudioInterp);
@@ -1122,55 +1203,38 @@ static bool _handle_load_game(unsigned type, const struct retro_game_info *info)
 				am3u_nds->slot_tbl[0]=0;
 			}
 		}
-		if(am3u_nds->slot_tbl[0]>=0){
-			const AdvancedM3UMedia* media=&am3u_nds->changee_tbl[am3u_nds->slot_tbl[0]];
-
-			log_cb(RETRO_LOG_INFO, "NDS slot: %s\n", media->path);
-
-			NDS::LoadROM(media->path, save_path.c_str(), Config::DirectBoot);
+		if(am3u_gba->changee_used>0){
+			if(am3u_gba->slot_tbl[0]<0){
+				if(am3u_gba->changee_used>0){
+					am3u_gba->slot_tbl[0]=0;
+				}
+			}
 		}
+
+		preloaded_nds_data=NULL;
+		preloaded_nds_size=0;
+		preloaded_gba_data=NULL;
+		preloaded_gba_size=0;
 	}
 	else{
 		QTextRef qpath;
 		qtext_ref_c(&qpath,info->path);
 		am3u_device_add_media(am3u_get_device(am3u,'D'),1,false,NULL,&qpath,NULL);
 
-		log_cb(RETRO_LOG_INFO, "NDS slot: %s\n", info->path);
+		preloaded_nds_data=(u8*)info->data;
+		preloaded_nds_size=info->size;
 
-		NDS::LoadROM((u8*)info->data, info->size, save_path.c_str(), Config::DirectBoot);
+		if (type == SLOT_1_2_BOOT)
+		{
+			qtext_ref_c(&qpath,info[1].path);
+			am3u_device_add_media(am3u_get_device(am3u,'A'),1,false,NULL,&qpath,NULL);
+
+			preloaded_gba_data=(u8*)info[1].data;
+			preloaded_gba_size=info[1].size;
+		}
 	}
    
-	if(am3u_gba->changee_used>0){
-		if(am3u_gba->slot_tbl[0]<0){
-			if(am3u_gba->changee_used>0){
-				am3u_gba->slot_tbl[0]=0;
-			}
-		}
-		if(am3u_gba->slot_tbl[0]>=0){
-			const AdvancedM3UMedia* media=&am3u_gba->changee_tbl[am3u_gba->slot_tbl[0]];
-
-			log_cb(RETRO_LOG_INFO, "GBA slot: %s\n", media->path);
-
-			std::string gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) +media->label+ ".srm";
-
-			NDS::LoadGBAROM(media->path, gba_save_path.c_str());
-		}
-	}
-   else if (type == SLOT_1_2_BOOT)
-   {
-      char gba_game_name[256];
-      std::string gba_save_path;
-      const char *ptr = path_basename(info[1].path);
-      if (ptr)
-         strlcpy(gba_game_name, ptr, sizeof(gba_game_name));
-      else
-         strlcpy(gba_game_name, info[1].path, sizeof(gba_game_name));
-      path_remove_extension(gba_game_name);
-
-      gba_save_path = std::string(retro_saves_directory) + std::string(1, PLATFORM_DIR_SEPERATOR) + std::string(gba_game_name) + std::string(1, PLATFORM_DIR_SEPERATOR) + "nvram.srm";
-
-      NDS::LoadGBAROM((u8*)info[1].data, info[1].size, gba_game_name, gba_save_path.c_str());
-   }
+	set_media();
 
    return true;
 }

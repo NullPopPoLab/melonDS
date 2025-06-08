@@ -828,6 +828,7 @@ enum retro_mod
                                             * and it's up to the implementation to find a suitable directory.
                                             */
 #define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY 31
+#define RETRO_ENVIRONMENT_GET_SYSTEM_SAVE_DIRECTORY 31
                                            /* const char ** --
                                             * Returns the "save" directory of the frontend, unless there is no
                                             * save directory available. The save directory should be used to
@@ -1801,6 +1802,11 @@ enum retro_mod
                                             * must be manually swapped out by the user (e.g. PSX, floppy disk
                                             * based systems).
                                             */
+
+#define RETRO_ENVIRONMENT_GET_ROOT_SAVE_DIRECTORY (RETRO_ENVIRONMENT_EXPERIMENTAL|0x9877)
+#define RETRO_ENVIRONMENT_GET_GROUP_SAVE_DIRECTORY (RETRO_ENVIRONMENT_EXPERIMENTAL|0x9878)
+#define RETRO_ENVIRONMENT_GET_GAME_SAVE_DIRECTORY (RETRO_ENVIRONMENT_EXPERIMENTAL|0x9879)
+#define RETRO_ENVIRONMENT_GET_BOOT_SAVE_DIRECTORY (RETRO_ENVIRONMENT_EXPERIMENTAL|0x987a)
 
 /* VFS functionality */
 
